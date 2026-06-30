@@ -1,0 +1,15 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.env
+
+# Data files
+*.csv
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Node (in case frontend's own .gitignore is removed)
+node_modules/
+build/
