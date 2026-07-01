@@ -1,5 +1,6 @@
 import { useState } from "react";
 import axios from "axios";
+import { ShieldCheck } from "lucide-react";
 
 const bankAccountTypes = ["Current", "Other", "savings", "Unknown"];
 
@@ -69,9 +70,12 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50 py-10 px-4">
       <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-md p-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
-          Loan Default Prediction
-        </h1>
+        <div className="flex items-center gap-3 mb-2">
+          <ShieldCheck className="text-blue-600" size={36} />
+          <h1 className="text-3xl font-bold text-gray-900">
+            Loan Default Prediction
+          </h1>
+        </div>
         <p className="text-gray-500 mb-8">
           Enter borrower details to predict default risk
         </p>
