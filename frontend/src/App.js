@@ -1,6 +1,24 @@
 import { useState } from "react";
 import axios from "axios";
 
+const bankAccountTypes = ["Current", "Other", "savings", "Unknown"];
+
+const bankNames = [
+  "Access Bank", "Diamond Bank", "EcoBank", "FCMB", "Fidelity Bank",
+  "First Bank", "GT Bank", "Heritage Bank", "Keystone Bank", "Skye Bank",
+  "Stanbic IBTC", "Standard Chartered", "Sterling Bank", "UBA",
+  "Union Bank", "Unity Bank", "Unknown", "Wema Bank", "Zenith Bank"
+];
+
+const employmentStatuses = [
+  "Contract", "Permanent", "Retired", "Self-Employed",
+  "Student", "Unemployed", "Unknown"
+];
+
+const educationLevels = [
+  "Graduate", "Post-Graduate", "Primary", "Secondary", "Unknown"
+];
+
 function App() {
   const [formData, setFormData] = useState({
     loannumber_x: "",
@@ -25,58 +43,106 @@ function App() {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  const categoricalFields = {
+    bank_account_type: bankAccountTypes,
+    bank_name_clients: bankNames,
+    employment_status_clients: employmentStatuses,
+    level_of_education_clients: educationLevels,
+  };
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: parseFloat(e.target.value) });
   };
 
   const handleSubmit = async () => {
     setLoading(true);
+    setResult(null);
     try {
-      const response = await axios.post(
-        "http://127.0.0.1:5000/predict",
-        formData
-      );
+      const response = await axios.post("http://127.0.0.1:5000/predict", formData);
       setResult(response.data);
-    } catch (error) {
+    } catch(error){
       console.error(error);
     }
     setLoading(false);
   };
 
   return (
-    <div style={{ maxWidth: "600px", margin: "40px auto", fontFamily: "Arial" }}>
-      <h1>Loan Default Prediction</h1>
-      <p>Enter borrower details to predict default risk</p>
+    <div className="min-h-screen bg-gray-50 py-10 px-4">
+      <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-md p-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          Loan Default Prediction
+        </h1>
+        <p className="text-gray-500 mb-8">
+          Enter borrower details to predict default risk
+        </p>
 
-      {Object.keys(formData).map((key) => (
-        <div key={key} style={{ marginBottom: "12px" }}>
-          <label style={{ display: "block", marginBottom: "4px" }}>
-            {key.replace(/_/g, " ").toUpperCase()}
-          </label>
-          <input
-            type="number"
-            name={key}
-            onChange={handleChange}
-            style={{ width: "100%", padding: "8px", borderRadius: "4px", border: "1px solid #ccc" }}
-          />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {Object.keys(formData).map((key) => 
+            categoricalFields[key] ? (
+              <div key={key}>
+                <label className="block text-xs font-semibold text-gray-600 mb-1 tracking-wide">
+                  {key.replace(/_/g, " ").toUpperCase()}
+                </label>
+                <select
+                  name={key}
+                  onChange={handleChange}
+                  defaultValue=""
+                  className="w-full px-3 py-2.5 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                >
+                  <option value="" disabled className="text-base text-gray-40">Select...</option>
+                  {categoricalFields[key].map((label, index) => (
+                    <option key={index} value={index} className="text-base py-2">
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div key={key}>
+                <label className="block text-xs font-semibold text-gray-600 mb-1 tracking-wide">
+                  {key.replace(/_/g, " ").toUpperCase()}
+                </label>
+                <input
+                  type="number"
+                  name={key}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2.5 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              )
+            )}
+          </div>
+
+          <button
+            onClick={handleSubmit}
+            disabled={loading}
+            className="w-full mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold py-3 rounded-lg transition-colors"
+          >
+            {loading ? "Predicting..." : "Predict Default Risk"}
+          </button>
+
+          {result && (
+            <div
+              className={`mt-6 p-6 rounded-xl text-center ${
+              result.risk_level === "Low Risk"
+                ? "bg-green-50 border border-green-200"
+                : "bg-red-50 border border-red-200"
+              }`}
+            >
+              <h2
+                className={`text-xl font-bold ${
+                result.risk_level === "Low Risk" ? "text-green-700" : "text-red-700"
+                }`}
+              >
+                {result.risk_level}
+              </h2>
+              <p className="text-3xl font-extrabold text-gray-800 mt-2">
+                {result.default_risk}%  
+              </p>
+              <p className="text-gray-500 text-sm mt-1">Repayment Probability</p>
+            </div>
+          )}
         </div>
-      ))}
-
-      <button
-        onClick={handleSubmit}
-        style={{ width: "100%", padding: "12px", background: "#2563eb", color: "white", border: "none", borderRadius: "6px", fontSize: "16px", cursor: "pointer", marginTop: "10px" }}
-      >
-        {loading ? "Predicting..." : "Predict Default Risk"}
-      </button>
-
-      {result && (
-        <div style={{ marginTop: "24px", padding: "20px", borderRadius: "8px", background: result.risk_level === "Low Risk" ? "#dcfce7" : "#fee2e2", textAlign: "center" }}>
-          <h2>{result.risk_level}</h2>
-          <p style={{ fontSize: "24px", fontWeight: "bold" }}>
-            Repayment Probability: {result.default_risk}%
-          </p>
-        </div>
-      )}
     </div>
   );
 }

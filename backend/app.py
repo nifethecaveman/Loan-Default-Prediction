@@ -42,7 +42,7 @@ def predict():
 
         return jsonify({
             'default_risk': risk_score,
-            'risk_level': 'High Risk' if risk_score < 50 else 'Low Risk'
+            'risk_level': 'High Risk' if risk_score < 75 else 'Low Risk'
         })
     
     except Exception as e:
