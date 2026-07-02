@@ -20,6 +20,8 @@ const educationLevels = [
   "Graduate", "Post-Graduate", "Primary", "Secondary", "Unknown"
 ];
 
+const hiddenFields = ["totaldue_x", "daily_payment", "totaldue_y", "prev_loan_amount"];
+
 function App() {
   const [formData, setFormData] = useState({
     loannumber_x: "",
@@ -52,7 +54,32 @@ function App() {
   };
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: parseFloat(e.target.value) });
+    const { name, value } = e.target;
+    const updated = { ...formData, [name]: parseFloat(value) };
+
+    // Auto-calculate totaldue_x
+    if (name === 'loanamount_x' || name === 'interest_rate') {
+      if (updated.loanamount_x && updated.interest_rate) {
+        updated.totaldue_x = updated.loanamount_x * (1 + updated.interest_rate);
+      }
+    }
+
+    // Auto-calculate daily_payment
+    if (name === 'loanamount_x' || name === 'interest_rate' || name === 'termdays_x') {
+      if (updated.totaldue_x && updated.termdays_x > 0) {
+        updated.daily_payment = updated.totaldue_x / updated.termdays_x;
+      }
+    }
+
+    // Auto-calculate totaldue_y
+    if (name === 'loanamount_y') {
+      if (updated.loanamount_y && updated.interest_rate) {
+        updated.totaldue_y = updated.loanamount_y * (1 + updated.interest_rate);
+      }
+      updated.prev_loan_amount = updated.loanamount_y;
+    }
+
+    setFormData(updated);
   };
 
   const handleSubmit = async () => {
@@ -65,6 +92,22 @@ function App() {
       console.error(error);
     }
     setLoading(false);
+  };
+
+  const fieldLabels = {
+  loannumber_x: "Loan Number",
+  loanamount_x: "Loan Amount (₦)",
+  totaldue_x: "Total Amount Due (₦)",
+  termdays_x: "Loan Term (Days)",
+  loannumber_y: "Previous Loan Number",
+  loanamount_y: "Previous Loan Amount (₦)",
+  totaldue_y: "Previous Total Amount Due (₦)",
+  termdays_y: "Previous Loan Term (Days)",
+  age: "Age",
+  interest_rate: "Interest Rate (e.g. 0.15)",
+  daily_payment: "Daily Payment (₦)",
+  is_repeat_borrower: "Repeat Borrower (1=Yes, 0=No)",
+  prev_loan_amount: "Previous Loan Amount (₦)",
   };
 
   return (
@@ -82,10 +125,10 @@ function App() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {Object.keys(formData).map((key) => 
-            categoricalFields[key] ? (
+            hiddenFields.includes(key) ? null : categoricalFields[key] ? (
               <div key={key}>
                 <label className="block text-xs font-semibold text-gray-600 mb-1 tracking-wide">
-                  {key.replace(/_/g, " ").toUpperCase()}
+                  {fieldLabels[key] || key.replace(/_/g, " ").toUpperCase()}
                 </label>
                 <select
                   name={key}
@@ -104,7 +147,7 @@ function App() {
             ) : (
               <div key={key}>
                 <label className="block text-xs font-semibold text-gray-600 mb-1 tracking-wide">
-                  {key.replace(/_/g, " ").toUpperCase()}
+                  {fieldLabels[key] || key.replace(/_/g, " ").toUpperCase()}
                 </label>
                 <input
                   type="number"
