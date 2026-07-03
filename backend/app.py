@@ -27,8 +27,8 @@ def predict():
         employment_status_clients = data['employment_status_clients']
         level_of_education_clients = data['level_of_education_clients']
         loannumber_y = data['loannumber_y']
-        loanamount_y = data['loanamount_y']
-        totaldue_y = data['totaldue_y']
+        loanamount_y = data['loanamount_y'] or 0
+        totaldue_y = data['totaldue_y'] or 0
         termdays_y = data['termdays_y']
         age = data['age']
         interest_rate = data['interest_rate']

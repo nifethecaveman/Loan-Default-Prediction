@@ -73,10 +73,9 @@ function App() {
 
     // Auto-calculate totaldue_y
     if (name === 'loanamount_y') {
-      if (updated.loanamount_y && updated.interest_rate) {
-        updated.totaldue_y = updated.loanamount_y * (1 + updated.interest_rate);
-      }
-      updated.prev_loan_amount = updated.loanamount_y;
+      const rate = updated.interest_rate || 0.15;
+      updated.totaldue_y = updated.loanamount_y ? updated.loanamount_y * (1 + rate) : 0;
+      updated.prev_loan_amount = updated.loanamount_y || 0;
     }
 
     setFormData(updated);
