@@ -26,7 +26,7 @@ function App() {
   const [formData, setFormData] = useState({
     loannumber_x: "",
     loanamount_x: "",
-    totaldue_x: "",
+    totaldue_x: 0,
     termdays_x: "",
     bank_account_type: "",
     bank_name_clients: "",
@@ -34,13 +34,13 @@ function App() {
     level_of_education_clients: "",
     loannumber_y: "",
     loanamount_y: "",
-    totaldue_y: "",
+    totaldue_y: 0,
     termdays_y: "",
     age: "",
     interest_rate: "",
-    daily_payment: "",
+    daily_payment: 0,
     is_repeat_borrower: "",
-    prev_loan_amount: "",
+    prev_loan_amount: 0,
   });
 
   const [result, setResult] = useState(null);
@@ -171,22 +171,28 @@ function App() {
           {result && (
             <div
               className={`mt-6 p-6 rounded-xl text-center ${
-              result.risk_level === "Low Risk"
-                ? "bg-green-50 border border-green-200"
-                : "bg-red-50 border border-red-200"
+                result.risk_level === "Low Risk"
+                  ? "bg-green-50 border border-green-200"
+                  : "bg-red-50 border border-red-200"
               }`}
             >
               <h2
                 className={`text-xl font-bold ${
-                result.risk_level === "Low Risk" ? "text-green-700" : "text-red-700"
+                  result.risk_level === "Low Risk" ? "text-green-700" : "text-red-700"
                 }`}
               >
                 {result.risk_level}
               </h2>
               <p className="text-3xl font-extrabold text-gray-800 mt-2">
-                {result.default_risk}%  
+                {result.default_risk}%
               </p>
-              <p className="text-gray-500 text-sm mt-1">Repayment Probability</p>
+              <p className="text-gray-500 text-sm mt-1">Model Confidence Score</p>
+
+              {result.override_reason && (
+                <p className="text-sm text-red-600 mt-3 font-medium">
+                  ⚠ {result.override_reason}
+                </p>
+              )}
             </div>
           )}
         </div>
