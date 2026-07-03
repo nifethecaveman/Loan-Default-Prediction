@@ -115,7 +115,7 @@ function App() {
     setLoading(true);
     setResult(null);
     try {
-      const response = await axios.post("http://127.0.0.1:5000/predict", formData);
+      const response = await axios.post("https://loan-default-prediction-44j9.onrender.com/predict", formData);
       setResult(response.data);
     } catch (error) {
       console.error(error);
