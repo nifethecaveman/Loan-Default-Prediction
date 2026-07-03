@@ -2,7 +2,7 @@ import { useState } from "react";
 import axios from "axios";
 import { ShieldCheck } from "lucide-react";
 
-const bankAccountTypes = ["Current", "Other", "savings", "Unknown"];
+const bankAccountTypes = ["Current", "Other", "Savings", "Unknown"];
 
 const bankNames = [
   "Access Bank", "Diamond Bank", "EcoBank", "FCMB", "Fidelity Bank",
@@ -20,27 +20,43 @@ const educationLevels = [
   "Graduate", "Post-Graduate", "Primary", "Secondary", "Unknown"
 ];
 
-const hiddenFields = ["totaldue_x", "daily_payment", "totaldue_y", "prev_loan_amount"];
+const fieldLabels = {
+  loannumber: "Loan Number",
+  loanamount: "Loan Amount (₦)",
+  termdays: "Loan Term (Days)",
+  bank_account_type: "Bank Account Type",
+  bank_name_clients: "Bank Name",
+  employment_status_clients: "Employment Status",
+  level_of_education_clients: "Education Level",
+  age: "Age",
+  interest_rate: "Interest Rate (e.g. 0.15)",
+  num_previous_loans: "Number of Previous Loans",
+  avg_previous_loanamount: "Average Previous Loan Amount (₦)",
+  max_previous_loanamount: "Largest Previous Loan Amount (₦)",
+  avg_previous_termdays: "Average Previous Loan Term (Days)",
+};
+
+// Fields calculated automatically, not shown to the user directly
+const hiddenFields = ["totaldue", "daily_payment", "avg_previous_totaldue"];
 
 function App() {
   const [formData, setFormData] = useState({
-    loannumber_x: "",
-    loanamount_x: "",
-    totaldue_x: 0,
-    termdays_x: "",
+    loannumber: "",
+    loanamount: "",
+    totaldue: 0,
+    termdays: "",
     bank_account_type: "",
     bank_name_clients: "",
     employment_status_clients: "",
     level_of_education_clients: "",
-    loannumber_y: "",
-    loanamount_y: "",
-    totaldue_y: 0,
-    termdays_y: "",
     age: "",
-    interest_rate: "",
+    interest_rate: 0.15,
     daily_payment: 0,
-    is_repeat_borrower: "",
-    prev_loan_amount: 0,
+    num_previous_loans: "",
+    avg_previous_loanamount: "",
+    max_previous_loanamount: "",
+    avg_previous_totaldue: 0,
+    avg_previous_termdays: "",
   });
 
   const [result, setResult] = useState(null);
@@ -57,56 +73,54 @@ function App() {
     const { name, value } = e.target;
     const updated = { ...formData, [name]: parseFloat(value) };
 
-    // Auto-calculate totaldue_x
-    if (name === 'loanamount_x' || name === 'interest_rate') {
-      if (updated.loanamount_x && updated.interest_rate) {
-        updated.totaldue_x = updated.loanamount_x * (1 + updated.interest_rate);
+    // Auto-calculate totaldue and daily_payment from loan amount, interest rate, term
+    if (name === "loanamount" || name === "interest_rate" || name === "termdays") {
+      if (updated.loanamount && updated.interest_rate) {
+        updated.totaldue = updated.loanamount * (1 + updated.interest_rate);
+      }
+      if (updated.totaldue && updated.termdays > 0) {
+        updated.daily_payment = updated.totaldue / updated.termdays;
       }
     }
 
-    // Auto-calculate daily_payment
-    if (name === 'loanamount_x' || name === 'interest_rate' || name === 'termdays_x') {
-      if (updated.totaldue_x && updated.termdays_x > 0) {
-        updated.daily_payment = updated.totaldue_x / updated.termdays_x;
+    // Auto-calculate avg_previous_totaldue from avg previous loan amount + same interest rate
+    if (name === "avg_previous_loanamount" || name === "interest_rate") {
+      if (updated.avg_previous_loanamount && updated.interest_rate) {
+        updated.avg_previous_totaldue = updated.avg_previous_loanamount * (1 + updated.interest_rate);
       }
-    }
-
-    // Auto-calculate totaldue_y
-    if (name === 'loanamount_y') {
-      const rate = updated.interest_rate || 0.15;
-      updated.totaldue_y = updated.loanamount_y ? updated.loanamount_y * (1 + rate) : 0;
-      updated.prev_loan_amount = updated.loanamount_y || 0;
     }
 
     setFormData(updated);
   };
 
   const handleSubmit = async () => {
+    // Validation: age vs education plausibility
+    const minAgeForEducation = {
+      1: 23, // Post-Graduate
+      0: 21, // Graduate
+    };
+    const requiredAge = minAgeForEducation[formData.level_of_education_clients];
+    if (requiredAge && formData.age < requiredAge) {
+      alert("Age seems too young for the selected education level. Please double check the entries.");
+      return;
+    }
+
+    // Validation: previous loan history consistency
+    const hasPreviousLoan = formData.num_previous_loans > 0 || formData.avg_previous_loanamount > 0;
+    if (hasPreviousLoan && formData.num_previous_loans === 0) {
+      alert("Previous loan amount was entered but number of previous loans is 0. Please correct this.");
+      return;
+    }
+
     setLoading(true);
     setResult(null);
     try {
-      const response = await axios.post("https://loan-default-prediction-44j9.onrender.com/predict", formData);
+      const response = await axios.post("http://127.0.0.1:5000/predict", formData);
       setResult(response.data);
-    } catch(error){
+    } catch (error) {
       console.error(error);
     }
     setLoading(false);
-  };
-
-  const fieldLabels = {
-  loannumber_x: "Loan Number",
-  loanamount_x: "Loan Amount (₦)",
-  totaldue_x: "Total Amount Due (₦)",
-  termdays_x: "Loan Term (Days)",
-  loannumber_y: "Previous Loan Number",
-  loanamount_y: "Previous Loan Amount (₦)",
-  totaldue_y: "Previous Total Amount Due (₦)",
-  termdays_y: "Previous Loan Term (Days)",
-  age: "Age",
-  interest_rate: "Interest Rate (e.g. 0.15)",
-  daily_payment: "Daily Payment (₦)",
-  is_repeat_borrower: "Repeat Borrower (1=Yes, 0=No)",
-  prev_loan_amount: "Previous Loan Amount (₦)",
   };
 
   return (
@@ -123,78 +137,87 @@ function App() {
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {Object.keys(formData).map((key) => 
-            hiddenFields.includes(key) ? null : categoricalFields[key] ? (
-              <div key={key}>
-                <label className="block text-xs font-semibold text-gray-600 mb-1 tracking-wide">
-                  {fieldLabels[key] || key.replace(/_/g, " ").toUpperCase()}
-                </label>
-                <select
-                  name={key}
-                  onChange={handleChange}
-                  defaultValue=""
-                  className="w-full px-3 py-2.5 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                >
-                  <option value="" disabled className="text-base text-gray-40">Select...</option>
-                  {categoricalFields[key].map((label, index) => (
-                    <option key={index} value={index} className="text-base py-2">
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : (
+          {Object.keys(formData).map((key) => {
+            if (hiddenFields.includes(key)) return null;
+
+            if (categoricalFields[key]) {
+              return (
+                <div key={key}>
+                  <label className="block text-xs font-semibold text-gray-600 mb-1 tracking-wide">
+                    {fieldLabels[key] || key.replace(/_/g, " ").toUpperCase()}
+                  </label>
+                  <select
+                    name={key}
+                    onChange={handleChange}
+                    defaultValue=""
+                    className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  >
+                    <option value="" disabled>Select...</option>
+                    {categoricalFields[key].map((label, index) => (
+                      <option key={index} value={index} className="text-lg py-2">
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            }
+
+            return (
               <div key={key}>
                 <label className="block text-xs font-semibold text-gray-600 mb-1 tracking-wide">
                   {fieldLabels[key] || key.replace(/_/g, " ").toUpperCase()}
                 </label>
                 <input
-                  type="number"
-                  name={key}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2.5 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                    type="number"
+                    step="0.01"
+                    name={key}
+                    value={formData[key]}
+                    onChange={handleChange}
+                    onFocus={(e) => e.target.select()}
+                    className="w-full px-3 py-2.5 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
               </div>
-              )
-            )}
-          </div>
+            );
+          })}
+        </div>
 
-          <button
-            onClick={handleSubmit}
-            disabled={loading}
-            className="w-full mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold py-3 rounded-lg transition-colors"
+        <button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="w-full mt-6 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-semibold py-3 rounded-lg transition-colors"
+        >
+          {loading ? "Predicting..." : "Predict Default Risk"}
+        </button>
+
+        {result && (
+          <div
+            className={`mt-6 p-6 rounded-xl text-center ${
+              result.risk_level === "Low Risk"
+                ? "bg-green-50 border border-green-200"
+                : "bg-red-50 border border-red-200"
+            }`}
           >
-            {loading ? "Predicting..." : "Predict Default Risk"}
-          </button>
-
-          {result && (
-            <div
-              className={`mt-6 p-6 rounded-xl text-center ${
-                result.risk_level === "Low Risk"
-                  ? "bg-green-50 border border-green-200"
-                  : "bg-red-50 border border-red-200"
+            <h2
+              className={`text-xl font-bold ${
+                result.risk_level === "Low Risk" ? "text-green-700" : "text-red-700"
               }`}
             >
-              <h2
-                className={`text-xl font-bold ${
-                  result.risk_level === "Low Risk" ? "text-green-700" : "text-red-700"
-                }`}
-              >
-                {result.risk_level}
-              </h2>
-              <p className="text-3xl font-extrabold text-gray-800 mt-2">
-                {result.default_risk}%
-              </p>
-              <p className="text-gray-500 text-sm mt-1">Model Confidence Score</p>
+              {result.risk_level}
+            </h2>
+            <p className="text-3xl font-extrabold text-gray-800 mt-2">
+              {result.default_risk}%
+            </p>
+            <p className="text-gray-500 text-sm mt-1">Model Confidence Score</p>
 
-              {result.override_reason && (
-                <p className="text-sm text-red-600 mt-3 font-medium">
-                  ⚠ {result.override_reason}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
+            {result.override_reason && (
+              <p className="text-sm text-red-600 mt-3 font-medium">
+                ⚠ {result.override_reason}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
