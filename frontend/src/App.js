@@ -29,7 +29,7 @@ const fieldLabels = {
   employment_status_clients: "Employment Status",
   level_of_education_clients: "Education Level",
   age: "Age",
-  interest_rate: "Interest Rate (e.g. 0.15)",
+  interest_rate: "Interest Rate (%)",
   num_previous_loans: "Number of Previous Loans",
   avg_previous_loanamount: "Average Previous Loan Amount (₦)",
   max_previous_loanamount: "Largest Previous Loan Amount (₦)",
@@ -61,6 +61,7 @@ function App() {
 
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [displayValues, setDisplayValues] = useState({});
 
   const categoricalFields = {
     bank_account_type: bankAccountTypes,
@@ -69,12 +70,51 @@ function App() {
     level_of_education_clients: educationLevels,
   };
 
+  const moneyFields = ['loanamount', 'avg_previous_loanamount', 'totaldue', 'avg_previous_totaldue', 'daily_payment', 'max_previous_loanamount'];
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const updated = { ...formData, [name]: parseFloat(value) };
 
-    // Auto-calculate totaldue and daily_payment from loan amount, interest rate, term
-    if (name === "loanamount" || name === "interest_rate" || name === "termdays") {
+    // Handle money fields with comma formatting
+    if (moneyFields.includes(name)) {
+      const raw = value.replace(/,/g, '');
+      if (isNaN(raw) && raw !== '') return;
+      const numericValue = name === 'interest_rate' ? (parseFloat(raw) / 100) : (parseFloat(raw) || 0);
+
+      setDisplayValues(prev => ({
+        ...prev,
+        [name]: raw === '' ? '' : Number(raw).toLocaleString()
+      }));
+
+      const updated = { ...formData, [name]: numericValue };
+
+      // Auto-calculate totaldue and daily_payment
+      if (name === 'loanamount' || name === 'interest_rate' || name === 'termdays') {
+        if (updated.loanamount && updated.interest_rate) {
+          updated.totaldue = updated.loanamount * (1 + updated.interest_rate);
+        }
+        if (updated.totaldue && updated.termdays > 0) {
+          updated.daily_payment = updated.totaldue / updated.termdays;
+        }
+      }
+
+      // Auto-calculate avg_previous_totaldue
+      if (name === 'avg_previous_loanamount' || name === 'interest_rate') {
+        if (updated.avg_previous_loanamount && updated.interest_rate) {
+          updated.avg_previous_totaldue = updated.avg_previous_loanamount * (1 + updated.interest_rate);
+        }
+      }
+
+      setFormData(updated);
+      return;
+    }
+
+    // Non-money fields
+    const parsedValue = name === 'interest_rate' ? parseFloat(value) / 100 : parseFloat(value);
+    const updated = { ...formData, [name]: parsedValue };
+
+    // Auto-calculate totaldue and daily_payment
+    if (name === 'loanamount' || name === 'interest_rate' || name === 'termdays') {
       if (updated.loanamount && updated.interest_rate) {
         updated.totaldue = updated.loanamount * (1 + updated.interest_rate);
       }
@@ -83,8 +123,8 @@ function App() {
       }
     }
 
-    // Auto-calculate avg_previous_totaldue from avg previous loan amount + same interest rate
-    if (name === "avg_previous_loanamount" || name === "interest_rate") {
+    // Auto-calculate avg_previous_totaldue
+    if (name === 'avg_previous_loanamount' || name === 'interest_rate') {
       if (updated.avg_previous_loanamount && updated.interest_rate) {
         updated.avg_previous_totaldue = updated.avg_previous_loanamount * (1 + updated.interest_rate);
       }
@@ -169,14 +209,12 @@ function App() {
                   {fieldLabels[key] || key.replace(/_/g, " ").toUpperCase()}
                 </label>
                 <input
-                    type="number"
-                    step="0.01"
-                    name={key}
-                    value={formData[key]}
-                    onChange={handleChange}
-                    onFocus={(e) => e.target.select()}
-                    className="w-full px-3 py-2.5 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+                  type={moneyFields.includes(key) ? "text" : "number"}
+                  name={key}
+                  value={moneyFields.includes(key) ? (displayValues[key] || '') : undefined}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2.5 text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
             );
           })}
